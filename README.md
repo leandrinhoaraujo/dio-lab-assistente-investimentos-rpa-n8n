@@ -124,17 +124,17 @@ Conecte o Agente de IA do N8N a um modelo como Gemini ou GPT para:
 
 ### MVP (Mínimo Viável)
 
-- [ ] Repositório forkado com o workflow N8N implementado
-- [ ] Workflow N8N exportado (`n8n/workflow.json`) com mensagens estáticas
-- [ ] Script de RPA integrado ao Webhook do N8N
+- [x] Repositório forkado com o workflow N8N implementado
+- [x] Workflow N8N exportado (`n8n/workflow.json`) com mensagens estáticas
+- [x] Script de RPA integrado ao Webhook do N8N
 - [ ] Print ou vídeo demonstrando o fluxo funcionando de ponta a ponta
 
 ### Desafio Completo
 
-- [ ] Todos os itens do MVP
-- [ ] Integração com Agente de IA no N8N
-- [ ] Mensagens geradas dinamicamente via LLM
-- [ ] Documentação explicando as decisões técnicas
+- [x] Todos os itens técnicos do MVP
+- [x] Integração opcional com Agente de IA no N8N (`n8n/workflow-ia.json`)
+- [x] Mensagens geradas dinamicamente via LLM
+- [x] Documentação explicando as decisões técnicas
 
 ## Estrutura do Repositório
 
@@ -170,3 +170,60 @@ Conecte o Agente de IA do N8N a um modelo como Gemini ou GPT para:
 **Bons estudos e mãos à obra** 🚀
 
 Se tiver dúvidas, lembre-se: a melhor forma de aprender é experimentando. Erre, corrija e celebre cada pequena vitória no caminho.
+
+## Implementação deste fork
+
+O MVP está em `n8n/workflow.json`. Ele recebe `{"clientes": [...]}`, lê o
+`docs/data.csv` publicado neste fork, filtra os produtos pelo perfil e pelo
+investimento mínimo compatível com o saldo e responde com as recomendações em
+JSON. A versão opcional com IA está em `n8n/workflow-ia.json`.
+
+### Ativar o GitHub Pages
+
+Em **Settings > Pages**, selecione **Deploy from a branch**, branch `main` e
+pasta `/docs`. Confirme depois do deploy:
+
+- `https://leandrinhoaraujo.github.io/dio-lab-assistente-investimentos-rpa-n8n/`
+- `https://leandrinhoaraujo.github.io/dio-lab-assistente-investimentos-rpa-n8n/data.csv`
+
+### Importar e testar o MVP
+
+1. No n8n, use **Import from File** e escolha `n8n/workflow.json`.
+2. Abra **Receber clientes**, clique em **Listen for test event** e copie a Test URL.
+3. Abra `src/extrair_clientes.ipynb` no Colab e defina `N8N_WEBHOOK_URL`.
+4. Execute as células em ordem. Para uso contínuo, ative o workflow e troque
+   pela Production URL.
+
+Para executar localmente:
+
+```bash
+python -m pip install -r requirements.txt
+python src/extrair_clientes.py --somente-extrair
+python src/extrair_clientes.py --webhook-url "SUA_URL_DO_WEBHOOK"
+```
+
+A URL do webhook também pode ser informada pela variável de ambiente
+`N8N_WEBHOOK_URL`. Credenciais e URLs privadas não devem ser commitadas.
+
+### Versão com IA
+
+Importe `n8n/workflow-ia.json`, abra **OpenAI Chat Model** e associe uma
+credencial criada no cofre do n8n. Confirme também se `gpt-4o-mini` está
+disponível na conta. O prompt considera nome, saldo e perfil, proíbe promessas
+de retorno e exige o aviso de caráter educativo.
+
+### Decisões técnicas
+
+- A base de produtos continua sendo o CSV, evitando dados duplicados no fluxo.
+- Saldos brasileiros como `R$ 12.500,00` são normalizados antes do filtro.
+- Só aparecem produtos do mesmo perfil cujo mínimo não exceda o saldo.
+- O MVP não depende de IA, chave paga ou credenciais para funcionar.
+- A IA fica em um workflow separado para não comprometer a demonstração do MVP.
+- Requisições usam timeout e validação de status, tabela, saldo e resposta JSON.
+
+### Evidência da execução
+
+O print precisa vir de uma instância n8n ativa. Execute o notebook enquanto o
+webhook estiver ouvindo, abra a execução bem-sucedida, deixe visíveis os nós
+verdes e a saída **Responder ao RPA**, e salve a captura em
+`docs/evidencias/execucao-mvp.png`. Essa evidência não é fabricada no repositório.

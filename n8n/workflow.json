@@ -1,0 +1,76 @@
+{
+  "name": "Assistente de Investimentos - MVP",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "assistente-investimentos",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "df2afc89-d68d-4dcf-b93d-11db2f3897a9",
+      "name": "Receber clientes",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-620, 0],
+      "webhookId": "assistente-investimentos"
+    },
+    {
+      "parameters": {
+        "url": "https://leandrinhoaraujo.github.io/dio-lab-assistente-investimentos-rpa-n8n/data.csv",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text",
+              "outputPropertyName": "csv"
+            }
+          }
+        }
+      },
+      "id": "69d62f76-faf4-44d6-89a1-6d411c2c8301",
+      "name": "Ler investimentos CSV",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-380, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const entrada = $('Receber clientes').first().json;\nconst clientes = entrada.body?.clientes ?? entrada.clientes;\n\nif (!Array.isArray(clientes) || clientes.length === 0) {\n  throw new Error('Envie um JSON no formato {\\\"clientes\\\": [...]}');\n}\n\nconst csv = $json.csv ?? $json.data ?? $json.body;\nif (typeof csv !== 'string' || !csv.trim()) {\n  throw new Error('Nao foi possivel ler o CSV de investimentos.');\n}\n\nconst linhas = csv.trim().replace(/^\\uFEFF/, '').split(/\\r?\\n/);\nconst cabecalhos = linhas.shift().split(',').map((valor) => valor.trim());\nconst investimentos = linhas.filter(Boolean).map((linha) => {\n  const valores = linha.split(',').map((valor) => valor.trim());\n  return Object.fromEntries(cabecalhos.map((campo, indice) => [campo, valores[indice]]));\n});\n\nfunction paraNumeroBR(valor) {\n  if (typeof valor === 'number') return valor;\n  const limpo = String(valor ?? '').replace(/R\\$|\\s/g, '').replace(/\\./g, '').replace(',', '.');\n  const numero = Number(limpo);\n  if (!Number.isFinite(numero)) throw new Error(`Saldo invalido: ${valor}`);\n  return numero;\n}\n\nconst recomendacoes = clientes.map((cliente) => {\n  const saldo = paraNumeroBR(cliente.saldo);\n  const perfil = String(cliente.perfil ?? '').trim();\n  const opcoes = investimentos.filter((item) =>\n    item.perfil.toLocaleLowerCase('pt-BR') === perfil.toLocaleLowerCase('pt-BR') &&\n    Number(item.minimo) <= saldo\n  );\n\n  const produtos = opcoes.map((item) => ({\n    produto: item.produto,\n    investimento_minimo: Number(item.minimo),\n    rentabilidade: item.rentabilidade,\n  }));\n  const lista = produtos.length\n    ? produtos.map((item) => `${item.produto} (${item.rentabilidade})`).join(', ')\n    : 'nenhum produto da base atende ao saldo informado';\n  const foco = {\n    Conservador: 'seguranca e renda fixa',\n    Moderado: 'equilibrio entre renda fixa e renda variavel',\n    Arrojado: 'maior potencial de retorno, aceitando mais oscilacoes',\n  }[perfil] ?? 'produtos compativeis com o perfil informado';\n\n  return {\n    nome: cliente.nome,\n    email: cliente.email,\n    saldo,\n    perfil,\n    produtos,\n    mensagem: `Ola, ${cliente.nome}! Para o seu perfil ${perfil}, com foco em ${foco}, encontramos: ${lista}. Esta mensagem tem carater educativo e nao constitui recomendacao individual de investimento.`,\n  };\n});\n\nreturn [{ json: { sucesso: true, total: recomendacoes.length, recomendacoes } }];"
+      },
+      "id": "2ec868a8-f5fd-4f97-b226-3c689b5b5a14",
+      "name": "Cruzar dados e gerar mensagens",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-120, 0]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "685e46e2-5c7a-470f-88ca-bfcb91b1ea27",
+      "name": "Responder ao RPA",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [140, 0]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Receber clientes": {
+      "main": [[{"node": "Ler investimentos CSV", "type": "main", "index": 0}]]
+    },
+    "Ler investimentos CSV": {
+      "main": [[{"node": "Cruzar dados e gerar mensagens", "type": "main", "index": 0}]]
+    },
+    "Cruzar dados e gerar mensagens": {
+      "main": [[{"node": "Responder ao RPA", "type": "main", "index": 0}]]
+    }
+  },
+  "active": false,
+  "settings": {"executionOrder": "v1"},
+  "versionId": "7971c190-3c2b-4e4f-b3c8-dccfbfd290b2",
+  "meta": {"templateCredsSetupCompleted": false},
+  "tags": []
+}

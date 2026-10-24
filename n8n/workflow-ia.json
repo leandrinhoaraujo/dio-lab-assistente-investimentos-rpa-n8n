@@ -1,0 +1,78 @@
+{
+  "name": "Assistente de Investimentos - IA",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "assistente-investimentos-ia",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "adfc0b1a-695c-4bdb-9665-a836c1c6c4df",
+      "name": "Receber contexto",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-520, 0],
+      "webhookId": "assistente-investimentos-ia"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Crie uma mensagem personalizada para cada cliente deste JSON:\n{{ JSON.stringify($json.body.clientes) }}",
+        "options": {
+          "systemMessage": "Você é um assistente educacional de investimentos. Responda somente em JSON válido, sem markdown, no formato {\"recomendacoes\":[{\"nome\":\"...\",\"mensagem\":\"...\"}]}. Para perfil Conservador priorize renda fixa e segurança; para Moderado, equilíbrio; para Arrojado, maior potencial e maior risco. Considere o saldo, não prometa retorno e sempre avise que a mensagem não constitui recomendação individual."
+        }
+      },
+      "id": "4a40f8a8-3d02-43ac-9f18-5c750a85e57f",
+      "name": "Agente de IA",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [-220, 0]
+    },
+    {
+      "parameters": {
+        "modelName": "gpt-4o-mini",
+        "options": {"temperature": 0.4}
+      },
+      "id": "8c547249-7b45-452a-9510-e873509046a8",
+      "name": "OpenAI Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [-220, 220]
+    },
+    {
+      "parameters": {
+        "jsCode": "const texto = $json.output ?? $json.text ?? '';\nconst limpo = String(texto).replace(/^```(?:json)?\\s*/i, '').replace(/\\s*```$/, '');\nlet resultado;\ntry { resultado = JSON.parse(limpo); } catch { resultado = { recomendacoes: [], texto }; }\nreturn [{ json: { sucesso: true, ...resultado } }];"
+      },
+      "id": "377f6494-9b36-4a21-ae4b-6741046982ee",
+      "name": "Normalizar resposta",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [60, 0]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "id": "2f9a53d5-dc38-4616-9611-c8b5057d3f8c",
+      "name": "Responder ao RPA",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [320, 0]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Receber contexto": {"main": [[{"node": "Agente de IA", "type": "main", "index": 0}]]},
+    "OpenAI Chat Model": {"ai_languageModel": [[{"node": "Agente de IA", "type": "ai_languageModel", "index": 0}]]},
+    "Agente de IA": {"main": [[{"node": "Normalizar resposta", "type": "main", "index": 0}]]},
+    "Normalizar resposta": {"main": [[{"node": "Responder ao RPA", "type": "main", "index": 0}]]}
+  },
+  "active": false,
+  "settings": {"executionOrder": "v1"},
+  "versionId": "5ef0269e-e021-4ce2-b793-df2e766a4547",
+  "meta": {"templateCredsSetupCompleted": false},
+  "tags": []
+}
